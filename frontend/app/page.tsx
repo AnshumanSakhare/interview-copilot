@@ -68,14 +68,20 @@ export default function Home() {
         (error: string) => {
           setError(error);
           setIsConnected(false);
+          setStatus('Connection error');
         },
         () => {
           setIsConnected(false);
+          setStatus('Disconnected (retrying...)');
+        },
+        () => {
+          setIsConnected(true);
+          setError('');
+          setStatus('Connected to backend');
         }
       )
       .then(() => {
-        setIsConnected(true);
-        setStatus('Connected to backend');
+        // Initial connect handled by onOpen callback for consistency with reconnects.
       })
       .catch((err) => {
         setError(`Failed to connect (${wsUrl}): ${err.message}`);

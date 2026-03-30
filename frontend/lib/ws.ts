@@ -11,6 +11,7 @@ export class InterviewCopilotWS {
   private onMessage: (msg: StreamMessage) => void = () => {};
   private onError: (error: string) => void = () => {};
   private onClose: () => void = () => {};
+  private onOpen: () => void = () => {};
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 2000;
@@ -22,7 +23,8 @@ export class InterviewCopilotWS {
   connect(
     onMessage: (msg: StreamMessage) => void,
     onError: (error: string) => void,
-    onClose: () => void
+    onClose: () => void,
+    onOpen: () => void = () => {}
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
@@ -45,12 +47,14 @@ export class InterviewCopilotWS {
         this.onMessage = onMessage;
         this.onError = onError;
         this.onClose = onClose;
+        this.onOpen = onOpen;
 
         this.ws.binaryType = 'arraybuffer';
 
         this.ws.onopen = () => {
           console.log('WebSocket connected');
           this.reconnectAttempts = 0;
+          this.onOpen();
           resolve();
         };
 
@@ -113,7 +117,7 @@ export class InterviewCopilotWS {
       this.reconnectAttempts++;
       console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       setTimeout(() => {
-        this.connect(this.onMessage, this.onError, this.onClose).catch(console.error);
+        this.connect(this.onMessage, this.onError, this.onClose, this.onOpen).catch(console.error);
       }, this.reconnectDelay * this.reconnectAttempts);
     }
   }
