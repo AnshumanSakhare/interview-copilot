@@ -1,0 +1,27 @@
+# Backend
+backend/.env
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.DS_Store
+
+# Frontend
+frontend/.env.local
+frontend/.next/
+frontend/node_modules/
+frontend/.DS_Store
+frontend/package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
