@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import struct
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -76,11 +77,23 @@ class InterviewSession:
         self.live_available = USE_GEMINI
         self.audio_buffer = bytearray()
         self.max_audio_bytes = 16_000 * 2 * 10  # 10s mono PCM16 at 16kHz
+
+    async def _safe_send_json(self, payload: dict) -> bool:
+        """Best-effort websocket send that treats disconnects as non-fatal."""
+        if not self.is_active:
+            return False
+        try:
+            await self.websocket.send_json(payload)
+            return True
+        except Exception:
+            # Client may disconnect between receive/send; avoid bubbling fatal errors.
+            self.is_active = False
+            return False
         
     async def init_gemini(self):
         """Initialize Gemini Live session"""
         if not USE_GEMINI:
-            await self.websocket.send_json({
+            await self._safe_send_json({
                 "type": "ready",
                 "content": "Local fallback mode active. Configure GEMINI_API_KEY in backend/.env for live Gemini coaching."
             })
@@ -105,7 +118,7 @@ class InterviewSession:
             # fall back to text analysis triggered from frontend transcript.
             self.live_available = False
             logger.error(f"❌ Failed to initialize Gemini Live: {e}", exc_info=True)
-            await self.websocket.send_json({
+            await self._safe_send_json({
                 "type": "ready",
                 "content": "Live audio model unavailable. Using text analysis fallback; speak normally and we'll analyze your transcript on stop."
             })
@@ -365,25 +378,19 @@ class InterviewSession:
         """Send streaming content to client"""
         if not content.strip():
             return
-        
-        try:
-            message = {
-                "type": section_type,
-                "content": content.strip()
-            }
-            await self.websocket.send_json(message)
-        except Exception as e:
-            logger.error(f"Failed to send streaming message: {e}")
+
+        message = {
+            "type": section_type,
+            "content": content.strip()
+        }
+        await self._safe_send_json(message)
     
     async def _send_error(self, error_msg: str):
         """Send error message to client"""
-        try:
-            await self.websocket.send_json({
-                "type": "error",
-                "content": error_msg
-            })
-        except Exception as e:
-            logger.error(f"Failed to send error: {e}")
+        await self._safe_send_json({
+            "type": "error",
+            "content": error_msg
+        })
     
     async def close(self):
         """Close the Gemini session"""
@@ -468,13 +475,8 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info("WebSocket disconnected")
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
-        try:
-            await websocket.send_json({
-                "type": "error",
-                "content": f"Backend error: {str(e)}"
-            })
-        except:
-            pass
+        if session:
+            await session._send_error(f"Backend error: {str(e)}")
     
     finally:
         if session:
@@ -497,10 +499,11 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"🚀 Starting Interview Copilot backend on port {BACKEND_PORT}")
+    reload_enabled = os.getenv("UVICORN_RELOAD", "false").strip().lower() in {"1", "true", "yes"}
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=BACKEND_PORT,
-        reload=True,
+        reload=reload_enabled,
         log_level="info"
     )

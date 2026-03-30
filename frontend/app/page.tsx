@@ -11,6 +11,13 @@ interface CopilotState {
   followUps: string;
 }
 
+const STARTER_QUESTIONS = [
+  'Tell me about a time you solved a difficult problem under pressure.',
+  'Describe a project where you had to influence stakeholders without direct authority.',
+  'Walk me through a failure you experienced and what you changed afterward.',
+  'How have you used AI tools to improve your workflow while maintaining quality?',
+];
+
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -22,6 +29,9 @@ export default function Home() {
   });
   const [status, setStatus] = useState('Ready');
   const [error, setError] = useState('');
+  const [activeQuestion] = useState(
+    () => STARTER_QUESTIONS[Math.floor(Math.random() * STARTER_QUESTIONS.length)]
+  );
 
   const audioRef = useRef<AudioCapture | null>(null);
   const wsRef = useRef<InterviewCopilotWS | null>(null);
@@ -238,6 +248,10 @@ export default function Home() {
               <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
                 Real-time AI that improves your answers as you speak
               </p>
+              <p className="mt-3 max-w-2xl text-xs leading-6 text-slate-500 sm:text-sm">
+                This app listens to your spoken answer, rewrites it into a sharper interview response, and suggests
+                stronger framing plus likely follow-up questions.
+              </p>
             </div>
 
             <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 shadow-sm">
@@ -276,6 +290,21 @@ export default function Home() {
             </button>
             <div className="flex items-center text-sm text-slate-500 sm:ml-auto">Status: {status}</div>
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-indigo-200/70 bg-gradient-to-r from-indigo-50 to-sky-50 p-4 shadow-soft-xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700">Start Here</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-900 sm:text-xl">Practice Interview Question</h2>
+            </div>
+            <span className="inline-flex w-fit items-center rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-indigo-700 shadow-sm">
+              Answer out loud, then press Stop
+            </span>
+          </div>
+          <p className="mt-3 rounded-xl border border-indigo-200/70 bg-white/85 p-4 text-sm leading-7 text-slate-800 sm:text-base">
+            {activeQuestion}
+          </p>
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">

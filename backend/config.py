@@ -17,3 +17,4 @@ else:
     print("⚠ Configuration loaded in local fallback mode (set GEMINI_API_KEY for Gemini)")
 
 print(f"✓ Configuration loaded: port={BACKEND_PORT}, frontend={FRONTEND_URL}")
+
