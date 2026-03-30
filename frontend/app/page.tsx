@@ -45,7 +45,21 @@ export default function Home() {
 
   // Initialize WebSocket connection
   useEffect(() => {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
+    const configuredWsUrl = (process.env.NEXT_PUBLIC_WS_URL || '').trim();
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    // In production, require explicit NEXT_PUBLIC_WS_URL so deployments don't silently
+    // try localhost and fail with a generic disconnect message.
+    const wsUrl = configuredWsUrl || (isLocalhost ? 'ws://localhost:8000/ws' : '');
+
+    if (!wsUrl) {
+      setError('Missing NEXT_PUBLIC_WS_URL. Set it in Vercel to wss://<your-render-service>/ws and redeploy.');
+      setStatus('Connection failed');
+      return;
+    }
+
     wsRef.current = new InterviewCopilotWS(wsUrl);
 
     wsRef.current
@@ -64,7 +78,7 @@ export default function Home() {
         setStatus('Connected to backend');
       })
       .catch((err) => {
-        setError(`Failed to connect: ${err.message}`);
+        setError(`Failed to connect (${wsUrl}): ${err.message}`);
         setStatus('Connection failed');
       });
 

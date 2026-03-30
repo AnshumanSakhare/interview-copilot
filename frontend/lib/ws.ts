@@ -52,15 +52,15 @@ export class InterviewCopilotWS {
           }
         };
 
-        this.ws.onerror = (event: Event) => {
-          const error = 'WebSocket error occurred';
+        this.ws.onerror = (_event: Event) => {
+          const error = `WebSocket error occurred (${wsUrl})`;
           console.error(error);
           onError(error);
           reject(new Error(error));
         };
 
-        this.ws.onclose = () => {
-          console.log('WebSocket closed');
+        this.ws.onclose = (event: CloseEvent) => {
+          console.log(`WebSocket closed (code=${event.code}, reason=${event.reason || 'n/a'})`);
           onClose();
           this.attemptReconnect();
         };
