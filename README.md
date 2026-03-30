@@ -1,336 +1,181 @@
-# Interview Copilot: Real-time Voice Coaching with Gemini 3.1 Flash Live
+# Interview Copilot
 
-A full-stack web application that provides real-time AI-powered interview coaching using the Gemini 3.1 Flash Live model via WebSocket streaming.
+Real-time voice interview coaching powered by Gemini 3.1 Flash Live.
+
+## Description
+
+Interview Copilot is a full-stack web app that listens to your spoken interview answers and streams AI feedback in real time. It captures microphone audio in the browser, sends it to a FastAPI backend over WebSocket, and returns structured coaching output as you speak.
+
+The app focuses on low-latency interview practice with:
+- Live transcript cleanup
+- Better answer suggestions
+- Filler-word detection
+- Follow-up question generation
 
 ## Architecture
 
-```
+```text
 Frontend (Next.js 15)
-├── Web Audio API for microphone capture
-├── PCM16 encoding (16kHz, 16-bit mono)
-└── WebSocket streaming to backend
+|- Web Audio API microphone capture
+|- PCM16 encoding (16kHz, mono)
+'- WebSocket client
 
-Backend (Python FastAPI)
-├── WebSocket server for audio/text
-├── Gemini 3.1 Flash Live integration
-└── Real-time response streaming
-
-Gemini 3.1 Flash Live
-└── Low-latency bidrectional streaming model
+Backend (FastAPI)
+|- WebSocket server
+|- Session handling and response parsing
+'- Gemini 3.1 Flash Live integration
 ```
 
 ## Features
 
-✨ **Real-time Streaming**
-- Live microphone audio capture and encoding
-- Bidirectional WebSocket for instant feedback
-- Streaming responses that update progressively
-
-🎯 **Interview Coaching**
-- Real-time transcript cleaning
-- AI-improved answer generation
-- Filler word detection and suggestions
-- Follow-up question generation
-
-🔄 **Robust Connectivity**
-- Automatic reconnection logic
-- Error handling and recovery
-- Connection status monitoring
+- Real-time voice streaming and progressive AI responses
+- Automatic WebSocket reconnection and error handling
+- Structured coaching output:
+	- Transcript
+	- Better Answer
+	- Suggestion (only when needed)
+	- Follow-ups
+- Health endpoint for backend monitoring
 
 ## Prerequisites
 
-- Node.js 18+ (for frontend)
-- Python 3.9+ (for backend)
-- Gemini API Key ([Get from Google AI Studio](https://aistudio.google.com/app/apikey))
-- Modern browser with WebRTC support
+- Node.js 18+
+- Python 3.9+
+- Gemini API key from Google AI Studio
+- Browser with microphone support
 
 ## Local Setup
 
-### Backend Setup
+### 1) Backend
 
-1. **Navigate to backend directory**
-   ```bash
-   cd backend
-   ```
+```bash
+cd backend
+python -m venv .venv
+```
 
-2. **Create Python virtual environment**
-   ```bash
-   python -m venv venv
-   
-   # On Windows:
-   venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
+Activate virtual environment:
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```powershell
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+```
 
-4. **Configure environment**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit `.env` and add your GEMINI_API_KEY:
-   ```
-   GEMINI_API_KEY=your_gemini_api_key_here
-   BACKEND_PORT=8000
-   FRONTEND_URL=http://localhost:3000
-   ```
+```bash
+# macOS/Linux
+source .venv/bin/activate
+```
 
-5. **Run backend**
-   ```bash
-   python main.py
-   ```
+Install dependencies and configure env:
 
-   You should see:
-   ```
-   🎤 Interview Copilot backend starting...
-   🚀 Starting Interview Copilot backend on port 8000
-   ✓ Configuration loaded
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-### Frontend Setup
+Create `.env` in `backend/` with:
 
-1. **Navigate to frontend directory** (in a new terminal)
-   ```bash
-   cd frontend
-   ```
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+BACKEND_PORT=8000
+FRONTEND_URL=http://localhost:3000
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+Run backend:
 
-3. **Configure environment**
-   ```bash
-   cp .env.local.example .env.local
-   ```
-   
-   Edit `.env.local` if using custom backend URL:
-   ```
-   NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
-   ```
+```bash
+python main.py
+```
 
-4. **Run development server**
-   ```bash
-   npm run dev
-   ```
+### 2) Frontend
 
-   You should see:
-   ```
-   ▲ Next.js 15.x
-   - Local:        http://localhost:3000
-   ```
+```bash
+cd frontend
+npm install
+```
 
-5. **Open in browser**
-   - Navigate to http://localhost:3000
+Create `.env.local` in `frontend/` with:
+
+```env
+NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
+```
+
+Run frontend:
+
+```bash
+npm run dev
+```
+
+Open http://localhost:3000
 
 ## Usage
 
-1. **Start Recording**
-   - Click "🎙️ Start Recording" button
-   - Allow microphone access when prompted
-   - Status changes to "Recording..."
+1. Click Start Recording.
+2. Allow microphone access.
+3. Speak your interview response naturally.
+4. Review streamed Transcript, Better Answer, Suggestion, and Follow-ups.
+5. Click Stop when done.
 
-2. **Speak Naturally**
-   - Answer interview questions
-   - Let the AI process partial/incomplete sentences
-   - No need to wait for full answers
+## WebSocket Contract
 
-3. **View Real-time Feedback**
-   - Watch transcript update as you speak
-   - See AI-improved answer being generated
-   - Get filler word suggestions if detected
-   - Read follow-up questions
+Client to server:
+- Binary PCM16 audio chunks
+- Control JSON:
 
-4. **Stop Recording**
-   - Click "⏹️ Stop" when finished
-   - Status changes to "Processing..."
-   - Final responses appear within 1-2 seconds
-
-## System Prompt
-
-The AI follows this strict format:
-
-```
-Transcript: [cleaned version of what user said]
-Better Answer: [polished, professional response]
-Suggestion: [only if filler words detected]
-Follow-ups: [1-2 relevant next questions]
+```json
+{
+	"type": "control",
+	"command": "start"
+}
 ```
 
-Key behaviors:
-- Updates incrementally as user speaks
-- Cleanses filler words (uh, um, like, etc.)
-- Generates improvement suggestions only when needed
-- Keeps responses under 120 words
-- Provides context-aware follow-up questions
+Server to client:
 
-## Deployment
-
-### Backend Deployment (Railway)
-
-1. **Create Railway project**
-   - Go to [railway.app](https://railway.app)
-   - Create new project from GitHub
-   - Select your repository
-
-2. **Set environment variables**
-   ```
-   GEMINI_API_KEY=your_api_key
-   FRONTEND_URL=https://your-frontend-domain.vercel.app
-   ```
-
-3. **Configure start command**
-   - In Railway dashboard: Settings → Deployment
-   - Start Command: `pip install -r requirements.txt && python main.py`
-   - Or use Procfile:
-     ```
-     web: python main.py
-     ```
-
-4. **Deploy**
-   - Push to GitHub
-   - Railway auto-deploys
-
-### Frontend Deployment (Vercel)
-
-1. **Create Vercel project**
-   - Go to [vercel.com](https://vercel.com)
-   - Import project from GitHub
-   - Select `frontend` directory as root
-
-2. **Set environment variables**
-   ```
-   NEXT_PUBLIC_WS_URL=wss://your-backend-domain.up.railway.app/ws
-   ```
-
-3. **Deploy**
-   - Vercel auto-deploys on push to main
-
-## Development
-
-### Project Structure
-
+```json
+{
+	"type": "transcript",
+	"content": "string"
+}
 ```
+
+Possible `type` values: `transcript`, `better_answer`, `suggestion`, `follow_ups`, `error`.
+
+## API
+
+- `GET /health` returns backend health and model metadata.
+- `WS /ws` handles bi-directional audio and coaching messages.
+
+## Project Structure
+
+```text
 interview-copilot/
-├── frontend/
-│   ├── app/
-│   │   ├── page.tsx          # Main component
-│   │   ├── layout.tsx        # Layout wrapper
-│   │   ├── page.module.css   # Styles
-│   │   └── globals.css       # Global styles
-│   ├── lib/
-│   │   ├── audio.ts          # Audio capture & PCM encoding
-│   │   └── ws.ts             # WebSocket client
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── .env.local.example
-│
-└── backend/
-    ├── main.py              # FastAPI app & WebSocket handler
-    ├── config.py            # Configuration
-    ├── requirements.txt
-    └── .env.example
+|- frontend/
+|  |- app/
+|  |  |- page.tsx
+|  |  |- layout.tsx
+|  |  |- page.module.css
+|  |  '- globals.css
+|  |- lib/
+|  |  |- audio.ts
+|  |  '- ws.ts
+|  '- package.json
+'- backend/
+	 |- main.py
+	 |- config.py
+	 '- requirements.txt
 ```
-
-### Key Components
-
-**Frontend**
-- `AudioCapture`: Web Audio API wrapper, PCM16 encoding
-- `InterviewCopilotWS`: WebSocket client with reconnection logic
-- `page.tsx`: React component with real-time UI updates
-
-**Backend**
-- `InterviewSession`: Per-connection session manager
-- `websocket_endpoint`: WebSocket handler, streaming logic
-- Gemini Live integration with structured output parsing
-
-## API Reference
-
-### WebSocket Messages (Client → Server)
-
-**Audio Data**
-- Binary data: PCM16 audio chunk (16kHz, 16-bit mono)
-
-**Control Messages**
-```json
-{
-  "type": "control",
-  "command": "start" | "stop"
-}
-```
-
-### WebSocket Messages (Server → Client)
-
-```json
-{
-  "type": "transcript" | "better_answer" | "suggestion" | "follow_ups" | "error",
-  "content": "string content"
-}
-```
-
-### REST Endpoints
-
-**GET /health**
-- Returns server health status
-- Response: `{ "status": "healthy", "model": "gemini-3.1-flash-live-preview", "api": "Interview Copilot" }`
 
 ## Troubleshooting
 
-### "Failed to connect" error
-- Check backend is running: `http://localhost:8000/health`
-- Verify CORS settings in `main.py`
-- Check firewall allows WebSocket connections
+- Connection errors: confirm backend is running at `http://localhost:8000/health`.
+- No audio input: verify microphone permission in browser settings.
+- Model errors: verify `GEMINI_API_KEY` is valid and has access to Live API.
+- Frequent disconnects: check local network stability and backend logs.
 
-### Audio not working
-- Grant microphone permissions in browser
-- Check browser console for errors
-- Verify HTTPS/WSS when deployed (not HTTP/WS)
+## Deployment
 
-### Gemini not responding
-- Verify API key in `.env`
-- Check Gemini API has Live model access
-- Monitor backend logs for errors
-
-### WebSocket disconnects frequently
-- Check network stability
-- Increase reconnection attempts in `lib/ws.ts`
-- Monitor backend logs for timeouts
-
-## Performance Tips
-
-1. **Optimize Audio**
-   - Keep microphone input at 16kHz
-   - Use reasonable buffer sizes (4096 bytes)
-   - Avoid high CPU usage local audio processing
-
-2. **Network**
-   - Use CDN for frontend (Vercel)
-   - Place backend near users (Railway regions)
-   - Monitor latency with WS ping/pong
-
-3. **Streaming**
-   - Incremental UI updates reduce latency perception
-   - Stream partial responses immediately
-   - Buffer audio chunks appropriately
-
-## Support
-
-- [Gemini API Docs](https://ai.google.dev/gemini-api)
-- [Gemini Live API](https://ai.google.dev/gemini-api/docs/live-api)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [FastAPI Guide](https://fastapi.tiangolo.com/)
+- Frontend: Vercel
+- Backend: Railway / Render / Fly.io
+- Use secure `wss://` URL for production WebSocket traffic.
 
 ## License
 
 MIT
-
----
-
-Built with ❤️ using Gemini 3.1 Flash Live
-#   i n t e r v i e w - c o p i l o t  
- 
