@@ -8,7 +8,7 @@ load_dotenv(dotenv_path=ENV_PATH, override=True)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 BACKEND_PORT = int(os.getenv("BACKEND_PORT", "8000"))
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3003")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 USE_GEMINI = bool(GEMINI_API_KEY and not GEMINI_API_KEY.startswith("demo-"))
 
 if USE_GEMINI:
