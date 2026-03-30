@@ -26,9 +26,20 @@ export class InterviewCopilotWS {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        const wsUrl = this.url.includes('://')
+        let wsUrl = this.url.includes('://')
           ? this.url
           : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
+
+        // Guard against common env mistakes in deployed URLs.
+        // Example: .../wss (wrong) should be .../ws (correct).
+        wsUrl = wsUrl.replace(/\/wss$/i, '/ws');
+
+        // If someone passes https/http URL by mistake, convert it to ws/wss.
+        if (wsUrl.startsWith('https://')) {
+          wsUrl = `wss://${wsUrl.slice('https://'.length)}`;
+        } else if (wsUrl.startsWith('http://')) {
+          wsUrl = `ws://${wsUrl.slice('http://'.length)}`;
+        }
 
         this.ws = new WebSocket(wsUrl);
         this.onMessage = onMessage;
