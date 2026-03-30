@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { AudioCapture, AUDIO_CONFIG, detectFillers } from '@/lib/audio';
 import { InterviewCopilotWS, StreamMessage } from '@/lib/ws';
-import styles from './page.module.css';
 
 interface CopilotState {
   transcript: string;
@@ -45,21 +44,7 @@ export default function Home() {
 
   // Initialize WebSocket connection
   useEffect(() => {
-    const configuredWsUrl = (process.env.NEXT_PUBLIC_WS_URL || '').trim();
-    const isLocalhost =
-      typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-    // In production, require explicit NEXT_PUBLIC_WS_URL so deployments don't silently
-    // try localhost and fail with a generic disconnect message.
-    const wsUrl = configuredWsUrl || (isLocalhost ? 'ws://localhost:8000/ws' : '');
-
-    if (!wsUrl) {
-      setError('Missing NEXT_PUBLIC_WS_URL. Set it in Vercel to wss://<your-render-service>/ws and redeploy.');
-      setStatus('Connection failed');
-      return;
-    }
-
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
     wsRef.current = new InterviewCopilotWS(wsUrl);
 
     wsRef.current
@@ -68,23 +53,17 @@ export default function Home() {
         (error: string) => {
           setError(error);
           setIsConnected(false);
-          setStatus('Connection error');
         },
         () => {
           setIsConnected(false);
-          setStatus('Disconnected (retrying...)');
-        },
-        () => {
-          setIsConnected(true);
-          setError('');
-          setStatus('Connected to backend');
         }
       )
       .then(() => {
-        // Initial connect handled by onOpen callback for consistency with reconnects.
+        setIsConnected(true);
+        setStatus('Connected to backend');
       })
       .catch((err) => {
-        setError(`Failed to connect (${wsUrl}): ${err.message}`);
+        setError(`Failed to connect: ${err.message}`);
         setStatus('Connection failed');
       });
 
@@ -240,94 +219,127 @@ export default function Home() {
     }
   };
 
-  const hasFillers = state.suggestion.length > 0;
+  const isStreaming = isRecording || status === 'Processing...';
+  const showTranscriptPlaceholder = !state.transcript;
+  const showBetterAnswerPlaceholder = !state.betterAnswer;
+  const showSuggestionPlaceholder = !state.suggestion;
+  const showFollowupsPlaceholder = !state.followUps;
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h1>🎤 Interview Copilot</h1>
-        <p>Real-time AI coaching with Gemini 3.1 Flash Live</p>
-      </header>
-
-      <div className={styles.section}>
-        <h2>✅ Quick Tip Before You Start</h2>
-        <div className={styles.content}>
-          <p>
-            Use this simple structure while speaking: <strong>Situation - Action - Result</strong>.
-          </p>
-          <p>
-            Example: "In my last project, our checkout was slow (Situation). I optimized queries and caching (Action). Page load time dropped by 35% and conversions improved (Result)."
-          </p>
-        </div>
-      </div>
-
-      <div className={styles.statusBar}>
-        <div className={`${styles.statusIndicator} ${isConnected ? styles.connected : styles.disconnected}`}></div>
-        <span className={styles.statusText}>
-          {isConnected ? '✓ Connected' : '✗ Disconnected'}
-        </span>
-        <span className={styles.statusText}>{status}</span>
-      </div>
-
-      {error && <div className={styles.errorBar}>{error}</div>}
-
-      <div className={styles.controls}>
-        <button
-          className={`${styles.button} ${styles.primary}`}
-          onClick={startRecording}
-          disabled={isRecording || !isConnected}
-        >
-          {isRecording ? '⏹️ Recording' : '🎙️ Start Recording'}
-        </button>
-        <button
-          className={`${styles.button} ${styles.secondary}`}
-          onClick={stopRecording}
-          disabled={!isRecording}
-        >
-          ⏹️ Stop
-        </button>
-      </div>
-
-      <div className={styles.responseGrid}>
-        {/* Transcript Section */}
-        <div className={styles.section}>
-          <h2>📝 Transcript</h2>
-          <div className={styles.content}>
-            {state.transcript || <span className={styles.placeholder}>Your speech will appear here...</span>}
-          </div>
-        </div>
-
-        {/* Better Answer Section */}
-        <div className={styles.section}>
-          <h2>✨ Better Answer</h2>
-          <div className={styles.content}>
-            {state.betterAnswer || <span className={styles.placeholder}>AI-improved answer will appear here...</span>}
-          </div>
-        </div>
-
-        {/* Suggestion Section */}
-        {hasFillers && (
-          <div className={`${styles.section} ${styles.warning}`}>
-            <h2>💡 Suggestion</h2>
-            <div className={styles.content}>
-              {state.suggestion}
+    <main className="min-h-screen px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto w-full max-w-7xl animate-reveal-up space-y-5 sm:space-y-6">
+        <header className="card-surface relative overflow-hidden p-5 sm:p-6">
+          <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-sky-300/20 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-16 left-24 h-48 w-48 rounded-full bg-emerald-300/20 blur-2xl" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Live AI Interview Coach</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Interview Copilot</h1>
+              <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+                Real-time AI that improves your answers as you speak
+              </p>
             </div>
+
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/80 px-4 py-2 shadow-sm">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${isRecording ? 'animate-pulse-dot bg-emerald-500' : 'bg-slate-300'}`}
+              />
+              <span className="text-sm font-medium text-slate-700">{isRecording ? 'Listening...' : 'Standby'}</span>
+              <span className={`text-xs ${isConnected ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {error && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 shadow-sm">
+            {error}
           </div>
         )}
 
-        {/* Follow-ups Section */}
-        <div className={styles.section}>
-          <h2>❓ Follow-up Questions</h2>
-          <div className={styles.content}>
-            {state.followUps || <span className={styles.placeholder}>Next questions will appear here...</span>}
+        <section className="card-surface p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={startRecording}
+              disabled={isRecording || !isConnected}
+            >
+              {isRecording ? 'Recording...' : 'Start Recording'}
+            </button>
+            <button
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={stopRecording}
+              disabled={!isRecording}
+            >
+              Stop
+            </button>
+            <div className="flex items-center text-sm text-slate-500 sm:ml-auto">Status: {status}</div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <footer className={styles.footer}>
-        <p>Audio Format: PCM16 @ 16kHz | WebSocket Streaming</p>
-        <p>Powered by Gemini 3.1 Flash Live</p>
-      </footer>
-    </div>
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+          <article className="card-surface border-slate-200 p-4 sm:p-5 lg:col-span-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-600">Live Transcript</h2>
+              {isStreaming && (
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">Streaming</span>
+              )}
+            </div>
+            <div className="mt-3 min-h-[320px] rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-7 text-slate-700">
+              {showTranscriptPlaceholder ? (
+                <span className="text-slate-400">Start speaking...</span>
+              ) : (
+                <>
+                  {state.transcript}
+                  {isStreaming && <span className="stream-caret" aria-hidden="true" />}
+                </>
+              )}
+            </div>
+          </article>
+
+          <div className="space-y-4 lg:col-span-7 lg:space-y-5">
+            <article className="rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50 via-cyan-50 to-emerald-50 p-5 shadow-soft-2xl sm:p-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-sky-700">Better Answer</h2>
+                {isStreaming && (
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-sky-700">
+                    <span className="h-1.5 w-1.5 animate-stream rounded-full bg-sky-500" />
+                    <span className="h-1.5 w-1.5 animate-stream rounded-full bg-sky-500 [animation-delay:0.2s]" />
+                    <span className="h-1.5 w-1.5 animate-stream rounded-full bg-sky-500 [animation-delay:0.4s]" />
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 min-h-[260px] rounded-xl border border-sky-200/70 bg-white/85 p-4 text-[15px] leading-7 text-slate-800 sm:p-5">
+                {showBetterAnswerPlaceholder ? (
+                  <span className="text-slate-400">Your improved answer will appear here...</span>
+                ) : (
+                  <>
+                    {state.betterAnswer}
+                    {isStreaming && <span className="stream-caret" aria-hidden="true" />}
+                  </>
+                )}
+              </div>
+            </article>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <article className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-soft-xl sm:p-5">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-amber-800">Suggestions</h3>
+                <p className="mt-3 min-h-[130px] text-sm leading-7 text-amber-900/90">
+                  {showSuggestionPlaceholder ? 'Suggestions will appear here...' : state.suggestion}
+                </p>
+              </article>
+
+              <article className="rounded-2xl border border-violet-200 bg-violet-50 p-4 shadow-soft-xl sm:p-5">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-violet-800">Follow-ups</h3>
+                <p className="mt-3 min-h-[130px] text-sm leading-7 text-violet-900/90">
+                  {showFollowupsPlaceholder ? 'Likely follow-up questions will appear here...' : state.followUps}
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
